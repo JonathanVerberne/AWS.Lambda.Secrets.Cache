@@ -1,0 +1,47 @@
+﻿AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: aws-secrets-lambda-extension-prototype
+
+Parameters: 
+  SecretKeyNameParameter:
+    Type: String
+    Default: "SecretsLambdaExtensionCache/UserCredentials"
+
+Resources:
+  CacheSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Ref SecretKeyNameParameter
+      Description: Test cache secret
+      SecretString: '{"username":"MasterUsername","password":"secret-password"}'
+      Tags:
+        -
+          Key: AppName
+          Value: aws-secrets-lambda-extension-prototype
+
+  LambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Architectures:
+        - arm64
+      FunctionName: AWS-Secrets-Lambda-Extension-ProtoType
+      Runtime: dotnet6
+      MemorySize: 128
+      Timeout: 30
+      CodeUri: 
+      Handler: AWS.Lambda.Secrets.Cache::AWS.Lambda.Secrets.Cache.Function::FunctionHandlerAsync
+      Environment:
+        Variables:
+          SECRET_KEY_NAME: !Ref SecretKeyNameParameter
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSXRayDaemonWriteAccess
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref CacheSecret
+      Layers:
+        - arn:aws:lambda:ap-southeast-2:665172237481:layer:AWS-Parameters-and-Secrets-Lambda-Extension-Arm64:2
+      
+Outputs:
+  LambdaFunctionArn:
+    Description: Lambda Arn
+    Value: !GetAtt LambdaFunction.Arn
